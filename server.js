@@ -3,6 +3,9 @@ import router from './routes';
 
 const app = express();
 
+// parse request body to json
+app.use(express.json());
+
 // apply router middleware
 app.use(router);
 
