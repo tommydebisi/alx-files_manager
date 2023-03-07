@@ -14,17 +14,17 @@ class DBClient {
   }
 
   /**
-   * isAlive - checks if the database client is connected
+   * checks if the database client is connected
    *
-   * @returns true if the client is connected else false
+   * @returns {boolean} true if the client is connected else false
    */
   isAlive() {
     return this.client.isConnected();
   }
 
   /**
-   * nbUsers - returns the number of users present in the db
-   * @returns the number of users present
+   * returns the number of users present in the db
+   * @returns {number} the number of users present
    */
   async nbUsers() {
     const collection = this.client.db().collection('users');
@@ -32,8 +32,8 @@ class DBClient {
   }
 
   /**
-   * nbFiles - returns the number of files present in the db
-   * @returns the number of users present
+   * returns the number of files present in the db
+   * @returns {number} the number of users present
    */
   async nbFiles() {
     const collection = this.client.db().collection('files');
@@ -41,13 +41,12 @@ class DBClient {
   }
 
   /**
- * fieldPresent - checks if the field passed in
- * is present
+ * checks if the field passed in is present
  *
- * @collectn: collection to check in
- * @field: field to check for (field is an object)
+ * @param {string} collectn - collection to check in
+ * @param {object} field - field to check for
  *
- * @returns true if collection is present or false if not
+ * @returns {boolean} true if collection is present or false if not
   */
   async fieldPresent(collectn, field) {
     const collection = this.client.db().collection(collectn);
@@ -55,13 +54,13 @@ class DBClient {
   }
 
   /**
-   * insetCol - inserts the obj passed into the collection
+   * inserts the obj passed into the collection
    * given
    *
-   * @collectn: collection to check in
-   * @obj: field obj to insert in the database
+   * @param {string} collectn - collection to check in
+   * @param {object} obj - field obj to insert in the database
    *
-   * @returns the stored object with id
+   * @returns {object} the stored object with id
    */
   async insertCol(collectn, obj) {
     const collection = this.client.db().collection(collectn);
