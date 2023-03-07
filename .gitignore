@@ -3,3 +3,5 @@ node_modules
 .eslintrc.js
 babel*
 package-lock.json
+healer*
+image_upload*
