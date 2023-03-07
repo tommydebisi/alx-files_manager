@@ -25,8 +25,8 @@ class RedisClient {
 
   /**
    * gets the value of a key from the database
-   * @param {string} key
-   * @returns {any}
+   * @param {string} key - key to get it's value
+   * @returns {any} The value of the key
    */
   async get(key) {
     return this._get(key);
@@ -36,9 +36,9 @@ class RedisClient {
    * sets a key and value with specified duration in
    * seconds in the database
    *
-   * @param {string} key
-   * @param {string} value
-   * @param {number} duration
+   * @param {string} key - key to set
+   * @param {string} value - value to set with key
+   * @param {number} duration - time in seconds to set for
    */
   async set(key, value, duration) {
     // set key with expiration
@@ -47,7 +47,7 @@ class RedisClient {
 
   /**
    * deletes the key passed from the database
-   * @param {string} key
+   * @param {string} key - key to delete from database
    */
   async del(key) {
     await this._del(key);

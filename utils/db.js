@@ -41,14 +41,15 @@ class DBClient {
   }
 
   /**
- * checks if the field passed in is present
+ * gets the obj matching the field passed if it's present
+ * else null
  *
  * @param {string} collectn - collection to check in
  * @param {object} field - field to check for
  *
- * @returns {boolean} true if collection is present or false if not
+ * @returns {object|null} object matching field else null
   */
-  async fieldPresent(collectn, field) {
+  async getField(collectn, field) {
     const collection = this.client.db().collection(collectn);
     return collection.findOne(field);
   }
