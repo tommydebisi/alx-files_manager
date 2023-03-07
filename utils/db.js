@@ -1,4 +1,5 @@
 import { MongoClient } from 'mongodb';
+import { promisify } from 'util';
 
 class DBClient {
   constructor() {
@@ -51,7 +52,8 @@ class DBClient {
   */
   async getField(collectn, field) {
     const collection = this.client.db().collection(collectn);
-    return collection.findOne(field);
+    const promFindOne = promisify(collection.findOne).bind(collection);
+    return promFindOne(field);
   }
 
   /**
