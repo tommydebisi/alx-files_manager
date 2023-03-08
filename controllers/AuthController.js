@@ -8,25 +8,27 @@ export default class AuthController {
     const authorize = req.get('Authorization');
 
     const base64Str = authorize.match(/Basic\s(.*=)/);
-    // eslint-disable-next-line new-cap
-    const buff = new Buffer.from(base64Str[1], 'base64');
-    const convStr = buff.toString('utf8');
+    let field;
+    if (base64Str) {
+      // eslint-disable-next-line new-cap
+      const buff = new Buffer.from(base64Str[1], 'base64');
+      const convStr = buff.toString('utf8');
 
-    const splitStr = convStr.split(':');
-    const field = {
-      email: splitStr[0],
-      password: sha1(splitStr[1]),
-    };
-
+      const splitStr = convStr.split(':');
+      field = {
+        email: splitStr[0],
+        password: sha1(splitStr[1]),
+      };
+    }
     const dbObj = await dbClient.getField('users', field);
-    if (!dbObj) {
+
+    if (!dbObj || !field) {
       return res.status(401)
         .json({ error: 'Unauthorized' });
     }
 
     // get string representation of objectId
     const dbObjId = dbObj._id.toString();
-    //
     const token = uuidv4();
     const tokKey = `auth_${token}`;
 

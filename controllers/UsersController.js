@@ -49,8 +49,8 @@ export default class UsersController {
     const fieldObj = await dbClient.getField('users',
       { _id: ObjectId('64062cfd5a6d34519f4ac23b') });
 
-    return res.json({
-      id: fieldObj._id,
+    return res.status(200).json({
+      id: fieldObj._id.toString(),
       email: fieldObj.email,
     });
   }

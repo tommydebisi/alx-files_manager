@@ -6,6 +6,7 @@ import { ObjectId } from 'mongodb';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
+const fileTypes = ['folder', 'file', 'image'];
 export default class FilesController {
   static async postUpload(req, res) {
     const tokenKey = `auth_${req.get('X-Token')}`;
@@ -16,23 +17,21 @@ export default class FilesController {
         .json({ error: 'Unauthorized' });
     }
 
-    const {
-      name, type, parentId, isPublic, data,
-    } = req.body;
+    const { name, type, data } = req.body;
+    const isPublic = req.body.isPublic || false;
+    const parentId = req.body.parentId || 0;
 
-    if (!name) { return res.status(400).json({ error: 'Missing name' }); }
+    if (!name) return res.status(400).json({ error: 'Missing name' });
 
-    if (!type || !(['folder', 'file', 'image'].includes(type))) {
-      return res.status(400)
-        .json({ error: 'Missing type' });
-    }
+    if (!type || !(fileTypes.includes(type))) return res.status(400).json({ error: 'Missing type' });
 
-    if (!data && type !== 'folder') { return res.status(400).json({ error: 'Missing data' }); }
+    if (!data && type !== 'folder') return res.status(400).json({ error: 'Missing data' });
 
     if (parentId) {
       const fileObj = await dbClient.getField('files', { _id: ObjectId(parentId) });
-      if (!fileObj) { return res.status(400).json({ error: 'Parent not found' }); }
-      if (fileObj.type !== 'folder') { return res.status(400).json({ error: 'Parent is not a folder' }); }
+
+      if (!fileObj) return res.status(400).json({ error: 'Parent not found' });
+      if (fileObj.type !== 'folder') return res.status(400).json({ error: 'Parent is not a folder' });
     }
 
     if (type === 'folder') {
@@ -40,8 +39,8 @@ export default class FilesController {
         userId: ObjectId(userId),
         name,
         type,
-        parentId: parentId || 0,
-        isPublic: isPublic || false,
+        parentId,
+        isPublic,
       });
 
       return res.status(201).json({
@@ -60,7 +59,7 @@ export default class FilesController {
       // eslint-disable-next-line no-bitwise
       await access(folderPath, constants.R_OK | constants.W_OK | constants.X_OK);
     } catch (e) {
-      console.log('here');
+      // create directories recursively
       await mkdir(folderPath, { recursive: true });
     }
 
@@ -69,16 +68,16 @@ export default class FilesController {
     const content = buff.toString('utf8');
 
     const uniqueFile = v4();
-    const filePath = join(folderPath, uniqueFile);
-    await writeFile(filePath, content);
+    const localPath = join(folderPath, uniqueFile);
+    await writeFile(localPath, content);
 
     const result = await dbClient.insertCol('files', {
       userId: ObjectId(userId),
       name,
       type,
-      parentId: parentId || 0,
-      isPublic: isPublic || false,
-      localPath: filePath,
+      parentId,
+      isPublic,
+      localPath,
     });
 
     return res.status(201)
