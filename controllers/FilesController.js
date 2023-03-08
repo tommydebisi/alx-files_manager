@@ -3,20 +3,11 @@ import { constants } from 'fs';
 import { v4 } from 'uuid';
 import { join } from 'path';
 import { ObjectId } from 'mongodb';
-import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
 const fileTypes = ['folder', 'file', 'image'];
 export default class FilesController {
   static async postUpload(req, res) {
-    const tokenKey = `auth_${req.get('X-Token')}`;
-
-    const userId = await redisClient.get(tokenKey);
-    if (!userId) {
-      return res.status(401)
-        .json({ error: 'Unauthorized' });
-    }
-
     const { name, type, data } = req.body;
     const isPublic = req.body.isPublic || false;
     const parentId = req.body.parentId || 0;
@@ -36,10 +27,10 @@ export default class FilesController {
 
     if (type === 'folder') {
       const insertResult = await dbClient.insertCol('files', {
-        userId: ObjectId(userId),
+        userId: ObjectId(req.userId),
         name,
         type,
-        parentId,
+        parentId: parentId === 0 ? parentId : ObjectId(parentId),
         isPublic,
       });
 
@@ -72,10 +63,10 @@ export default class FilesController {
     await writeFile(localPath, content);
 
     const result = await dbClient.insertCol('files', {
-      userId: ObjectId(userId),
+      userId: ObjectId(req.userId),
       name,
       type,
-      parentId,
+      parentId: parentId === 0 ? parentId : ObjectId(parentId),
       isPublic,
       localPath,
     });
@@ -89,5 +80,47 @@ export default class FilesController {
         isPublic: result.isPublic,
         parentId: result.parentId,
       });
+  }
+
+  static async getShow(req, res) {
+    const { id } = req.params;
+    const checkObj = { _id: ObjectId(id), userId: ObjectId(req.userId) };
+    const fileObj = await dbClient.getField('files', checkObj);
+
+    if (!fileObj) return res.status(401).json({ error: 'Unauthorized' });
+
+    return res.status(200).json({
+      id: fileObj._id,
+      userId: fileObj.userId,
+      name: fileObj.name,
+      type: fileObj.type,
+      isPublic: fileObj.isPublic,
+      parentId: fileObj.parentId,
+    });
+  }
+
+  static async getindex(req, res) {
+    const { parentId, page } = req.query;
+
+    if (parentId) {
+      // get one field to check if user has a folder with parentId
+      const checkObj = { _id: ObjectId(parentId), userId: ObjectId(req.userId), type: 'folder' };
+      const oneField = await dbClient.getField('files', checkObj);
+
+      // no folder present
+      if (!oneField) return res.status(200).json([]);
+
+      const allParentId = await dbClient.getAll('files', {
+        parentId: ObjectId(parentId), userId: ObjectId(req.userId),
+      },
+      { page: 0 });
+
+      return res.status(200).json(allParentId);
+    }
+
+    // paginate the files present for a user
+    const pageCount = page || 0;
+    const allFiles = await dbClient.getAll('files', { userId: ObjectId(req.userId) }, { page: pageCount });
+    return res.status(200).json(allFiles);
   }
 }
