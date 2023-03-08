@@ -70,6 +70,22 @@ class DBClient {
     const result = await collection.insertOne(obj);
     return result.ops[0];
   }
+
+  async getAll(collectn, obj, options) {
+    const collection = this.client.db().collection(collectn);
+    const { page } = options;
+    const limit = 20;
+    const pipe = [
+      { $match: obj },
+      { $skip: limit * page },
+      { $limit: limit },
+      { $addFields: { id: '$_id' } },
+      { $project: { _id: 0, localPath: 0 } },
+    ];
+
+    const cursor = collection.aggregate(pipe);
+    return cursor.toArray();
+  }
 }
 const dbClient = new DBClient();
 module.exports = dbClient;
