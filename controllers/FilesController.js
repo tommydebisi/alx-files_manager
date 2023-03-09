@@ -1,11 +1,24 @@
-import { mkdir, access, writeFile } from 'fs/promises';
-import { constants } from 'fs';
+import {
+  mkdir, access, writeFile, readFile,
+} from 'fs/promises';
+import { constants, access as checkExists } from 'fs';
 import { v4 } from 'uuid';
 import { join } from 'path';
 import { ObjectId } from 'mongodb';
+import { lookup } from 'mime-types';
 import dbClient from '../utils/db';
+import redisClient from '../utils/redis';
 
 const fileTypes = ['folder', 'file', 'image'];
+
+function _screenFile(objField) {
+  const field = { ...objField };
+  field.id = field._id;
+  delete field._id;
+  delete field.localPath;
+  return field;
+}
+
 export default class FilesController {
   static async postUpload(req, res) {
     const { name, type, data } = req.body;
@@ -34,14 +47,7 @@ export default class FilesController {
         isPublic,
       });
 
-      return res.status(201).json({
-        id: insertResult._id.toString(),
-        userId: insertResult.userId.toString(),
-        name: insertResult.name,
-        type: insertResult.type,
-        isPublic: insertResult.isPublic,
-        parentId: insertResult.parentId,
-      });
+      return res.status(201).json(_screenFile(insertResult));
     }
 
     const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
@@ -71,15 +77,7 @@ export default class FilesController {
       localPath,
     });
 
-    return res.status(201)
-      .json({
-        id: result._id.toString(),
-        userId: result.userId.toString(),
-        name: result.name,
-        type: result.type,
-        isPublic: result.isPublic,
-        parentId: result.parentId,
-      });
+    return res.status(201).json(_screenFile(result));
   }
 
   static async getShow(req, res) {
@@ -89,14 +87,7 @@ export default class FilesController {
 
     if (!fileObj) return res.status(401).json({ error: 'Unauthorized' });
 
-    return res.status(200).json({
-      id: fileObj._id,
-      userId: fileObj.userId,
-      name: fileObj.name,
-      type: fileObj.type,
-      isPublic: fileObj.isPublic,
-      parentId: fileObj.parentId,
-    });
+    return res.status(200).json(_screenFile(fileObj));
   }
 
   static async getindex(req, res) {
@@ -122,5 +113,72 @@ export default class FilesController {
     const pageCount = page || 0;
     const allFiles = await dbClient.getAll('files', { userId: ObjectId(req.userId) }, { page: pageCount });
     return res.status(200).json(allFiles);
+  }
+
+  static async putPublish(req, res) {
+    const { id } = req.params;
+
+    const objField = await dbClient.getField('files',
+      { _id: ObjectId(id), userId: ObjectId(req.userId) });
+
+    if (!objField) return res.status(404).json({ error: 'Not found' });
+
+    await dbClient.updateField('files',
+      { _id: ObjectId(id), userId: ObjectId(req.userId) }, { isPublic: true });
+
+    objField.isPublic = true;
+
+    return res.status(200).json(_screenFile(objField));
+  }
+
+  static async putUnpublish(req, res) {
+    const { id } = req.params;
+
+    const objField = await dbClient.getField('files',
+      { _id: ObjectId(id), userId: ObjectId(req.userId) });
+
+    if (!objField) return res.status(404).json({ error: 'Not found' });
+
+    await dbClient.updateField('files',
+      { _id: ObjectId(id), userId: ObjectId(req.userId) }, { isPublic: false });
+
+    objField.isPublic = false;
+
+    return res.status(200).json(_screenFile(objField));
+  }
+
+  // eslint-disable-next-line consistent-return
+  static async getFile(req, res) {
+    const { id } = req.params;
+    const tokenKey = `auth_${req.get('X-Token')}`;
+
+    const userId = await redisClient.get(tokenKey);
+
+    const fieldObj = await dbClient.getField('files', { _id: ObjectId(id) });
+
+    if (!fieldObj) return res.status(404).json({ error: 'Not found' });
+
+    if (!fieldObj.isPublic && !userId) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    if (fieldObj.type === 'folder') {
+      return res.status(400).json({ error: "A folder doesn't have content" });
+    }
+
+    if (!fieldObj.localPath) return res.status(400).json({ error: 'Not found' });
+    // eslint-disable-next-line consistent-return
+    checkExists(fieldObj.localPath, constants.F_OK, (err) => {
+      if (err) return res.status(400).json({ error: 'Not found' });
+    });
+    try {
+      const mimetype = lookup(fieldObj.name);
+      const readData = await readFile(fieldObj.localPath);
+
+      res.setHeader('Content-Length', readData.length);
+      return res.type(mimetype).send(readData);
+    } catch (error) {
+      res.status(404).json({ error: "File couldn't be read" });
+    }
   }
 }
