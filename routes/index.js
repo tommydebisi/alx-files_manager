@@ -1,5 +1,5 @@
 import express from 'express';
-import { getStats, getStatus } from '../controllers/AppController';
+import AppController from '../controllers/AppController';
 import UserController from '../controllers/UsersController';
 import AuthController from '../controllers/AuthController';
 import FilesController from '../controllers/FilesController';
@@ -8,8 +8,8 @@ import authToken from '../middlewares/authToken';
 
 const router = express.Router();
 
-router.route('/status').get(getStatus);
-router.route('/stats').get(getStats);
+router.get('/status', AppController.getStatus);
+router.get('/stats', AppController.getStats);
 router.route('/users/me').get(connectionCheck, authToken, UserController.getMe);
 router.route('/connect').get(connectionCheck, AuthController.getConnect);
 router.route('/disconnect').get(connectionCheck, authToken, AuthController.getDisconnect);
