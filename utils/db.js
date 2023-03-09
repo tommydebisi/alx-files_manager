@@ -86,6 +86,12 @@ class DBClient {
     const cursor = collection.aggregate(pipe);
     return cursor.toArray();
   }
+
+  async updateField(collectn, field, objToUpdate) {
+    const collection = this.client.db().collection(collectn);
+    // const promUpdateOne = promisify(collection.updateOne).bind(collection);
+    return collection.updateOne(field, { $set: objToUpdate });
+  }
 }
 const dbClient = new DBClient();
 module.exports = dbClient;
