@@ -4,7 +4,7 @@ import router from './routes';
 const app = express();
 
 // parse request body to json, increased limit of data to be parsed
-app.use(express.json({ limit: '25mb' }));
+app.use(express.json());
 
 // apply router middleware
 app.use(router);

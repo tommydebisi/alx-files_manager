@@ -8,7 +8,7 @@ import authToken from '../middlewares/authToken';
 
 const router = express.Router();
 
-router.get('/status', AppController.getStatus);
+router.route('/status').get(AppController.getStatus);
 router.get('/stats', AppController.getStats);
 router.route('/users/me').get(connectionCheck, authToken, UserController.getMe);
 router.route('/connect').get(connectionCheck, AuthController.getConnect);
